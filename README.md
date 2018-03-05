@@ -1,5 +1,5 @@
 # Chatbot_Python
-Email Assistant Chatbot which try its best to make your mailing experience awsome ,with user friendly respond...!!!
+Email Assistant Chatbot which try its best to make your mailing experience awsome ,with user friendly responds...!!!
 
 1.1 Abstract-
 In this project, we implement an E-mail Management Assistant System that mimics the features of a personal assistant. A personal assistant is usually someone who tailors it’s function according to individual’s needs and demands. This can be attained by using rule based systems. It is a set of "if-then" statements that uses a set of assertions, which decided based on rules how to act upon those assertions which are created. Such system that works on Rule based systems and emulates human reasoning provided with adequate knowledge is called an expert system. We plan to implement an email personal assistant system with the knowledge of rule based and expert systems and forward chaining rules. Furthermore, our email manager is a system that addresses the process of e-mail management, from initially sorting messages into virtual folders, to prioritizing, reading, replying (automatically or semi-automatically), archiving and deleting mail items.
