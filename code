@@ -1,0 +1,533 @@
+import imaplib
+import time
+import nltk
+import email
+from textblob import TextBlob
+from difflib import SequenceMatcher
+from nltk.tokenize import RegexpTokenizer
+from nltk.tokenize import sent_tokenize,word_tokenize
+from nltk.corpus import stopwords
+from string import punctuation
+from colorama import Fore
+# from nltk.tokenize import RegexpTokenizer
+tokenizer = RegexpTokenizer(r'\w+')
+
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
+
+def summarize(text):
+    word_sent=word_tokenize(text.lower())
+
+    _stopwords=set(stopwords.words('english')+ list(punctuation))
+    
+    word_sent=[word for word in word_sent if word not in _stopwords]
+    
+    
+    from nltk.probability import FreqDist
+    freq=FreqDist(word_sent)
+    
+    from heapq import nlargest
+    nlargest(10, freq, key=freq.get)
+    
+    from collections import defaultdict
+    ranking= defaultdict(int)
+    
+    sents=sent_tokenize(text)
+    
+    for i, sent in enumerate(sents):
+        for w in word_tokenize(sent.lower()):
+            if w in freq:
+                ranking[i] += freq[w]
+                
+    sents_idx= nlargest(4,ranking,key=ranking.get)
+    
+    
+    [sents[j] for j in sorted(sents_idx)]
+    for i in sents:
+        print(i)
+
+# from imaplib.list.parse import parse_list_response
+# import re
+
+
+# inpfrom = ["arpit"]
+mail = imaplib.IMAP4_SSL('imap.gmail.com')
+mail.login('minorproject9868@gmail.com', 'bypassingsecurity')
+fromdic = ["from","related"]
+subjdic = ["about","regarding"]
+datedic = ["since","before","on"]
+e_commerce_name = ["flipkart","amazon","ebay","snapdeal","jabong","myntra","shopclues","wish"]
+e_com_sub = ["invoice Copy","your order","Please Share Feedback","Please share your feedback",
+             "Shipment order","Order Confirmation","has been placed","Your question","regarding your recent order",
+             "out for delivery","You subscribed","has been dispatched","has been delivered","regarding your recent order",
+             "You subscribed","is confirmed","is placed","Refund Reference Number","refund initiated",
+             "Refund on order","tell about recent purchace","your enquiry","is confirmrd","successfully placed",
+             "share your feedback","had been processed","was delivered","item shipped","confirm item receipt",
+             "oreder status","confirmation of your order","reset yor password"]
+
+for i in range(0,len(e_com_sub)):
+    e_com_sub[i] = e_com_sub[i].replace(" ","")
+    e_com_sub[i] = e_com_sub[i].lower()
+# print(e_com_sub)
+while(True):
+    print(Fore.BLUE +"                                 <<<<<<<<<<<<<<<--------Hello Sir/Madame I am EMMA! How May I Help You?-------->>>>>>>>>>>>>>>")
+    print(Fore.BLUE +"                  --------You can perform various QuErIeS Like")
+    print(Fore.BLUE +"                  --------:1)Basic Fetching query only with name                               eg.  [Fetch me mail from [sender's name]...]")
+    print(Fore.BLUE +"                  --------:2)Fetching mail from name (since/on/before) date                    eg.  [Fetch me mail from sender [before/on/since] 25-11-2017]")
+    print(Fore.BLUE +"                  --------:3)Fetch Mail Regarding particular subject                           eg.  [Fetch me mail regarding [subject] ]")
+    print(Fore.BLUE +"                  --------:4)Fetch mail from [sender] regarding [a specific subject]           eg.  [Fetch mail from [name] regarding [subject]]")
+    print(Fore.BLUE +"                  --------:Done with your work ,I hope you got the answer for your querries? You may carry on with other queries or press 00 to exit if done.")
+    print(Fore.CYAN + "Enter your query here :- ",end=" ")
+    print(Fore.MAGENTA+"",end="")
+    accor = ""
+    datword = ""
+    flag = 0
+    fromflag = 0
+    subjflag = 0
+    datflag = 0
+    fromindex = -1
+    subjindex = -1
+    reqsubj = []
+    reqsender = []
+
+    # mail.list()
+    # Out: list of "folders" aka labels in gmail.
+    mail.select("inbox")  # connect to inbox.
+    inputsent = input()
+    if(inputsent == "00"):
+        break
+    inputsent = inputsent.lower()
+    inputsen =  tokenizer.tokenize(inputsent)
+    #print(inputsen)
+    #print(len(inputsen))
+    for i in inputsen:
+        #print(i)
+        if(i in fromdic):
+            #print("H1")
+            fromflag = 1
+            fromindex = inputsen.index(i)
+        if(i in subjdic):
+            #print("h2")
+            subjflag = 1
+            subjindex = inputsen.index(i)
+        if(i in datedic):
+            datflag = 1
+            datindex = inputsen.index(i)
+            datword = i
+    if(fromflag == 1 and subjflag ==1):
+        reqsender = inputsen[fromindex+1:subjindex]
+        reqsubj = inputsen[subjindex+1 :]
+        flag = 1
+
+    elif(fromflag == 1):
+        accor = "from"
+        reqsender = inputsen[fromindex+1:]
+    elif(subjflag == 1):
+        reqsubj = inputsen[subjindex+1:]
+        accor = "subject"
+
+    if(datflag == 1 and fromflag == 1):
+        inputsen = TextBlob(inputsent).words.lower()
+        validnum = []
+        cri = datword
+        datt = inputsen[datindex+1:]
+        reqsender = inputsen[fromindex+1:]
+        reqsender = reqsender[0]
+        #print("sender is"+reqsender)
+        datt = datt[0]
+        criteria =['from',reqsender,cri,datt]
+        typ, data = mail.search(None,*criteria)
+        
+        # typ,[pos_id] = mail.search(None,*criteria)
+        num = data[0].split()
+        #print(len(num))
+        if(typ!='OK'):   #print(Fore.MAGENTA+"",end="")
+            print(Fore.GREEN + "Unable to fetch")
+        if(len(num) == 0):
+            print(Fore.GREEN +"No records found")
+        elif(len(num) == 1):
+            result,dat = mail.fetch(num[0],'(RFC822)')
+            raw_email = (dat[0][1])
+            email_message = email.message_from_bytes(raw_email)
+            print(Fore.RED+"",end="")
+            print("From:" + email_message['From'])
+            print("Subject:" + email_message['Subject'])
+            print("Date:" + email_message['Date'])
+            print(email_message.get_payload()[0])
+        elif(len(num)>1):
+            print(Fore.GREEN + "Multiple records found! Select the choice!")
+            #subjectok = TextBlob(subject).words.lower()
+            for i in range(0,len(num)):
+                result,dat = mail.fetch(num[i],'(RFC822)')
+                raw_email = (dat[0][1])
+                email_message = email.message_from_bytes(raw_email)
+                print(Fore.RED+"",end="")
+                print(i+1," ->",email_message['subject'])
+            print(Fore.MAGENTA + "",end="")
+            choice_num = int(input())
+            print(Fore.RED+"",end="")
+            choice_num-=1
+            result,dat = mail.fetch(num[choice_num],'(RFC822)')
+            raw_email = (dat[0][1])
+            email_message = email.message_from_bytes(raw_email)
+            if(len(email_message.get_payload()[0])<100):
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+            else:
+                summarize(email_message.get_payload()[0])
+        
+        
+
+    elif(datflag == 1):
+        inputsen = TextBlob(inputsent).words.lower()
+        validnum = []
+        cri = datword
+        datt = inputsen[datindex+1:]
+        datt = datt[0]
+        criteria =[cri,datt]
+        typ, msg_id = mail.search(None,*criteria)
+        # typ,[pos_id] = mail.search(None,*criteria)
+        x = msg_id[0].split()
+        for num in x:
+            rv,data = mail.fetch(num,'(RFC822)')
+            if(rv != 'OK'):
+                print(Fore.GREEN + "Error geting message",num)
+            else:
+                msg = email.message_from_bytes(data[0][1])
+                fromtok = TextBlob(msg['subject']).words.lower()
+                #print(fromtok)
+                validnum.append(num)
+        if(len(validnum) ==1):
+            result,dat = mail.fetch(validnum[0],'(RFC822)')
+            raw_email = (dat[0][1])
+            email_message = email.message_from_bytes(raw_email)
+            print(Fore.RED+"",end="")
+            print("From:" + email_message['From'])
+            print("Subject:" + email_message['Subject'])
+            print("Date:" + email_message['Date'])
+            print(email_message.get_payload()[0])
+        elif(len(validnum)>1):
+            print(Fore.GREEN + "Multiple subject in the date range found! Kindly input the subject.")
+            print(Fore.RED+"",end="")
+            for i in validnum:
+                result,dat = mail.fetch(i,'(RFC822)')
+                msg = email.message_from_bytes(dat[0][1])
+                print(msg['subject'])
+            vali2 = []
+            print(Fore.MAGENTA+"",end="")
+            subject = input()
+            print(Fore.RED+"",end="") 
+            subjectok = TextBlob(subject).words.lower()
+            for i in validnum:
+                result,dat = mail.fetch(i,'(RFC822)')
+                msg = email.message_from_bytes(dat[0][1])
+    #                 print(msg['from'],"--subject--",msg['subject'],"--msgid--",i)
+                reqsubj = TextBlob(msg['Subject']).words.lower()
+                #print(reqsubj)  
+                if(set(subjectok) <= set(reqsubj) or set(subjectok) > set(reqsubj)):
+                    vali2.append(i)
+            if(len(vali2)>1):
+                for i in range(0,len(vali2)):
+                    result,dat = mail.fetch(vali2[i],'(RFC822)')
+                    msg = email.message_from_bytes(dat[0][1])
+                    print((i+1) , "->" , msg['subject'])
+                print(Fore.MAGENTA+"",end="")
+                choice_num = int(input())
+                print(Fore.RED+"",end="") 
+                choice_num-=1
+                result,dat = mail.fetch(vali2[choice_num],'(RFC822)')
+                raw_email = (dat[0][1])
+                email_message = email.message_from_bytes(raw_email)
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+            elif(len(vali2)==1):                           
+                result,dat = mail.fetch(vali2[0],'(RFC822)')
+                raw_email = (dat[0][1])
+                print(Fore.RED+"",end="") 
+                email_message = email.message_from_bytes(raw_email)
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+
+
+
+        #print(accor)
+    # num_msgs = int(data[0])
+    # print(num_msgs)
+    # typ,data = mail.list()
+    # pprint(data)
+    # accor = "from
+
+
+    elif(flag == 1):
+        #print("hello")
+        validnum = []
+        x = reqsender[0]
+        y = reqsubj[0]
+        print(Fore.RED+"",end="")
+        print(x,"--",y)
+        criteria = ['From',x,'Subject',y]
+        result,data = mail.search(None,*criteria)
+    #     print(result)
+        num = data[0].split()
+        if(result!='OK'):
+            print(Fore.GREEN + "Unable to fetch")
+        if(len(num) == 0):
+            print(Fore.GREEN+"No records found")
+        elif(len(num)>1):
+            print(Fore.GREEN +"Multiple records found! Select the choice!")
+            print(Fore.RED +"",end="")
+            #subjectok = TextBlob(subject).words.lower()
+            for i in range(0,len(num)):
+                result,dat = mail.fetch(num[i],'(RFC822)')
+                raw_email = (dat[0][1])
+                email_message = email.message_from_bytes(raw_email)
+                print(i+1," ->",email_message['subject'])
+            print(Fore.MAGENTA+"",end="")
+            choice_num = int(input())
+            print(Fore.RED+"",end="")
+            choice_num-=1
+            result,dat = mail.fetch(num[choice_num],'(RFC822)')
+            raw_email = (dat[0][1])
+            email_message = email.message_from_bytes(raw_email)
+            if(len(email_message.get_payload()[0])<100):
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+            else:
+                summarize(email_message.get_payload()[0])
+            
+
+        else:
+    #         num = data                    
+            result,dat = mail.fetch(num[0],'(RFC822)')
+            raw_email = (dat[0][1])
+            print(Fore.RED+"",end="")
+            email_message = email.message_from_bytes(raw_email)
+            if(len(email_message.get_payload()[0])<100):
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+            else:
+                summarize(email_message.get_payload()[0])
+            
+    elif(accor == "subject" and flag == 0):
+        print(Fore.GREEN+"Please be patient while we process your request. It might take a while depending upon your internet speed!")
+        validnum = []
+        result,data = mail.search(None, "All")
+        if result!='OK':
+            print(Fore.GREEN+"No message found!")
+        else:
+            for num in data[0].split():
+                rv,data = mail.fetch(num,'(RFC822)')
+                if(rv != 'OK'):
+                    print(Fore.GREEN +"Error geting message",num)
+                else:
+                    msg = email.message_from_bytes(data[0][1])
+                    subjtok = TextBlob(msg['Subject']).words.lower()
+                    #print(subjtok)
+                    if(set(subjtok) <= set(reqsubj) or set(subjtok)>set(reqsubj)):
+                        validnum.append(num)
+            if(len(validnum) == 0):
+                print(Fore.GREEN +"No such records Found!")
+            print(Fore.RED+"",end="")
+            if(len(validnum)==1):
+                result,dat = mail.fetch(validnum[0],'(RFC822)')
+                raw_email = (dat[0][1])
+                print(Fore.RED+"",end="")
+                email_message = email.message_from_bytes(raw_email)
+                if(len(email_message.get_payload()[0])<100):
+                    print("From:" + email_message['From'])
+                    print("Subject:" + email_message['Subject'])
+                    print("Date:" + email_message['Date'])
+                    print(email_message.get_payload()[0])
+                else:
+                    summarize(email_message.get_payload()[0])
+            elif(len(validnum) > 1):
+                print(Fore.GREEN +"Provide more info: Please input the name of the sender!")
+                vali2 = []
+                print(Fore.MAGENTA+"",end="")
+                fromtok = input()
+                fromtok = TextBlob(fromtok).words.lower()
+                print(Fore.RED+"",end="")
+                for i in validnum:
+                    result,dat = mail.fetch(i,'(RFC822)')
+                    msg = email.message_from_bytes(dat[0][1])
+                    #print(msg['subject'],"--from--",msg['from'])
+                    reqsender = TextBlob(msg['From']).words.lower()
+                    #print(reqsender)  
+                    if(set(fromtok) <= set(reqsender) or set(fromtok) > set(reqsender)):
+                        vali2.append(i)
+                if(len(vali2) == 1):                     
+                    result,dat = mail.fetch(vali2[0],'(RFC822)')
+                    raw_email = (dat[0][1])
+                    email_message = email.message_from_bytes(raw_email)
+                    print("From:" + email_message['From'])
+                    print("Subject:" + email_message['Subject'])
+                    print("Date:" + email_message['Date'])
+                    print(email_message.get_payload()[0])
+                elif(len(vali2) > 1):
+                    print(Fore.GREEN +"Select Your choice(Numerical)")
+                    print(Fore.RED+"",end="")
+                    for i in range(0,len(vali2)):
+                        result,dat = mail.fetch(vali2[i],'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+                        print(i+1,"->",msg['subject'],"--from--",msg['from'])
+                    print(Fore.MAGENTA+"",end="")
+                    choice_num = int(input())
+                    print(Fore.RED+"",end="")
+                    choice_num-=1
+                    result,dat = mail.fetch(vali2[choice_num],'(RFC822)')
+                    raw_email = (dat[0][1])
+                    email_message = email.message_from_bytes(raw_email)
+                    print("From:" + email_message['From'])
+                    print("Subject:" + email_message['Subject'])
+                    print("Date:" + email_message['Date'])
+                    print(email_message.get_payload()[0])
+                    
+                    
+                        
+    elif(accor == "from" and flag == 0):
+        validnum = []
+        print(Fore.GREEN+"Please be patient while we process your request. It might take a while depending upon your internet speed!")
+        e_com_flag = 0
+        if(reqsender[0] in e_commerce_name):
+            e_com_flag = 1
+    #     print("hello")
+        result,data = mail.search(None, "All")
+        if result!='OK':
+            print(Fore.GREEN+"No message found!")
+        else:
+    #         print("Jello")
+            for num in data[0].split():
+                rv,data = mail.fetch(num,'(RFC822)')
+                if(rv != 'OK'):
+                    print(Fore.GREEN+"Error geting message",num)
+                else:
+                    msg = email.message_from_bytes(data[0][1])
+                    fromtok = (msg['from']).lower()
+                    fromtok = tokenizer.tokenize(fromtok)
+    #                 print(set(reqsender) <= set(fromtok))
+                    if(set(reqsender) <= set(fromtok) or set(reqsender) > set(fromtok)):
+                        validnum.append(num)
+            if(len(validnum) == 0):
+                print(Fore.GREEN+"No records found")
+            if(len(validnum) == 1):
+                print(Fore.RED+"",end="")
+                result,dat = mail.fetch(validnum[0],'(RFC822)')
+                raw_email = (dat[0][1])
+                email_message = email.message_from_bytes(raw_email)
+    #           print(email_message['subject'])
+                print("From:" + email_message['From'])
+                print("Subject:" + email_message['Subject'])
+                print("Date:" + email_message['Date'])
+                print(email_message.get_payload()[0])
+            elif(len(validnum) > 1):
+                if(e_com_flag == 1):
+                    valid2 = []
+                    print(Fore.GREEN+"More info needed! Kindly Select a subject")
+                    print(Fore.RED+"",end="")
+                    for i in validnum:
+                        result,dat = mail.fetch(i,'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+                        e_subj = msg['subject'].lower()
+                        e_subj = e_subj.replace(" ","")
+                        for j in e_com_sub:
+                            if j in e_subj:
+                                valid2.append(i)
+                    for i in validnum:
+                        if i not in valid2:
+                            valid2.append(i)
+                    for i in valid2:
+                        result,dat = mail.fetch(i,'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+                        print(msg['subject'])
+                    vali2 = 0
+                    print(Fore.MAGENTA+"",end="")
+                    subject = input()
+                    print(Fore.RED+"",end="")
+                    subjectok = TextBlob(subject).words.lower()
+                    maxsim = 0
+                    for i in validnum:
+                        result,dat = mail.fetch(i,'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+        #                 print(msg['from'],"--subject--",msg['subject'],"--msgid--",i)
+                        reqsubj = TextBlob(msg['Subject']).words.lower()
+    #                     print(reqsubj)  
+                        simi = similar(reqsubj,subjectok)
+                        if(simi > maxsim):
+                            vali2 = i
+                            maxsim = simi
+                    result,dat = mail.fetch(vali2,'(RFC822)')
+                    raw_email = (dat[0][1])
+                    email_message = email.message_from_bytes(raw_email)
+                    print("From:" + email_message['From'])
+                    print("Subject:" + email_message['Subject'])
+                    print("Date:" + email_message['Date'])
+                    print(email_message.get_payload()[0])    
+
+                else:
+                    print(Fore.GREEN +"More info needed! Please enter the subject")
+                    print(Fore.RED + "",end="")
+                    for i in validnum:
+                        result,dat = mail.fetch(i,'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+                        print("->",msg['subject'])
+                    vali2 = []
+                    print(Fore.MAGENTA +"",end="")
+                    subject = input()
+                    print(Fore.RED+"",end="")
+                    subjectok = TextBlob(subject).words.lower()
+                    maxsim = 0
+                    for i in validnum:
+                        result,dat = mail.fetch(i,'(RFC822)')
+                        msg = email.message_from_bytes(dat[0][1])
+        #                 print(msg['from'],"--subject--",msg['subject'],"--msgid--",i)
+                        if(msg['subject']!=""):
+                            reqsubj = TextBlob(msg['Subject']).words.lower()
+    #                     print(reqsubj)
+                        if(set(subjectok)<=set(reqsubj) or set(subjectok)>set(reqsubj)):
+                            vali2.append(i)
+
+    #                     simi = similar(reqsubj,subjectok)
+    #                     if(simi > maxsim):
+    #                         vali2 = i
+    #                         maxsim = simi
+                    if(len(vali2) == 1):                
+                        result,dat = mail.fetch(vali2[0],'(RFC822)')
+                        raw_email = (dat[0][1])
+                        email_message = email.message_from_bytes(raw_email)
+                        print("From:" + email_message['From'])
+                        print("Subject:" + email_message['Subject'])
+                        print("Date:" + email_message['Date'])
+                        print(email_message.get_payload()[0])
+                    elif(len(vali2) > 1):
+                        print(Fore.GREEN+"Please Select a choice(Numerical)")
+                        print(Fore.RED+"",end="")
+                        for i in range(0,len(vali2)):
+                            result,dat = mail.fetch(vali2[i],'(RFC822)')
+                            msg = email.message_from_bytes(dat[0][1])
+                            print(i+1,"->",msg['subject'])
+                        print(Fore.MAGENTA+"",end="") 
+                        xnum = int(input())
+                        print(Fore.RED+"",end="")
+                        xnum-=1
+                        result,dat = mail.fetch(vali2[xnum],'(RFC822)')
+                        raw_email = (dat[0][1])
+                        email_message = email.message_from_bytes(raw_email)
+                        print("From:" + email_message['From'])
+                        print("Subject:" + email_message['Subject'])
+                        print("Date:" + email_message['Date'])
+                        print(email_message.get_payload()[0])
+    print(Fore.BLACK +"================================xxx================================xxx================================xxx================================xxx================================xxx================================== ")                    
+    print(Fore.YELLOW+"                                                                       <<<<<<<<<<<<<<<GETTING BOT READY FOR NEW QUERRIES>>>>>>>>>>>>>>>>>> \n")
+    print(Fore.BLACK +"================================xxx================================xxx================================xxx================================xxx================================xxx==================================\n ")                    
+    
+    time.sleep(5)
